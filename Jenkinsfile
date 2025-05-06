@@ -5,16 +5,28 @@ pipeline {
         }
     }
 
+    environment {
+        VENV = 'venv'
+    }
+
     stages {
-        stage('Install Dependencies') {
+        stage('Setup Environment & Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh '''
+                    python -m venv $VENV
+                    . $VENV/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'pytest test_app.py'
+                sh '''
+                    . $VENV/bin/activate
+                    pytest test_app.py
+                '''
             }
         }
 
@@ -22,7 +34,7 @@ pipeline {
             when {
                 anyOf {
                     branch 'main'
-                    branch pattern: 'release/.*', comparator: 'REGEXP'
+                    branch pattern: "release/.*", comparator: "REGEXP"
                 }
             }
             steps {
@@ -33,27 +45,31 @@ pipeline {
 
     post {
         success {
-            def payload = [
-                content: "✅ Build SUCCESS on `${env.BRANCH_NAME}` \nURL: ${env.BUILD_URL}"
-            ]
-            httpRequest(
-                httpMode: 'POST',
-                contentType: 'APPLICATION_JSON',
-                requestBody: groovy.json.JsonOutput.toJson(payload),
-                url: 'https://discord.com/api/webhooks/1369194606712983612/Antgz7vjrCkz0R6LJNzEWKrjiJ3Y8-ZMzr1eWVu-5tF8kEQI86dvFh9l1oomMWgvZlzG'
-            )
+            script {
+                def payload = [
+                    content: "✅ Build SUCCESS on `${env.BRANCH_NAME}`\nURL: ${env.BUILD_URL}"
+                ]
+                httpRequest(
+                    httpMode: 'POST',
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson(payload),
+                    url: 'https://discord.com/api/webhooks/1369194606712983612/Antgz7vjrCkz0R6LJNzEWKrjiJ3Y8-ZMzr1eWVu-5tF8kEQI86dvFh9l1oomMWgvZlzG'
+                )
+            }
         }
-
         failure {
-            def payload = [
-                content: "❌ Build FAILED on `${env.BRANCH_NAME}` \nURL: ${env.BUILD_URL}"
-            ]
-            httpRequest(
-                httpMode: 'POST',
-                contentType: 'APPLICATION_JSON',
-                requestBody: groovy.json.JsonOutput.toJson(payload),
-                url: 'https://discord.com/api/webhooks/1369194606712983612/Antgz7vjrCkz0R6LJNzEWKrjiJ3Y8-ZMzr1eWVu-5tF8kEQI86dvFh9l1oomMWgvZlzG'
-            )
+            script {
+                def payload = [
+                    content: "❌ Build FAILED on `${env.BRANCH_NAME}`\nURL: ${env.BUILD_URL}"
+                ]
+                httpRequest(
+                    httpMode: 'POST',
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson(payload),
+                    url: 'https://discord.com/api/webhooks/1369194606712983612/Antgz7vjrCkz0R6LJNzEWKrjiJ3Y8-ZMzr1eWVu-5tF8kEQI86dvFh9l1oomMWgvZlzG'
+                )
+            }
         }
     }
 }
+
